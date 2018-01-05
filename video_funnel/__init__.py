@@ -215,8 +215,8 @@ async def handle_get(request):
 
 
 async def handle_head(request):
-    r = await session.head(url, headers=request.headers)
-    return web.Response(status=r.status, headers=r.headers)
+    async with session.head(url, headers=request.headers) as r:
+        return web.Response(status=r.status, headers=r.headers)
 
 
 def start_server(args):

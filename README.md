@@ -16,7 +16,7 @@ $ sudo pip(3) install video_funnel
 
 2. 启动 `video_funnel` 的服务器：
 ```bash
-$ vf http://tulip.ink/test.mp4
+$ vf http://tulip.ink/test.mp4 &
 ======== Running on http://0.0.0.0:8080 ========
 (Press CTRL+C to quit)
 ```
