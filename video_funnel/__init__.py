@@ -177,7 +177,8 @@ async def handle_get(request):
         if resp.status >= 400:
             return web.Response(status=resp.status, headers=resp.headers)
         upstream_headers = dict(resp.headers)
-    #  del request.headers['Host']  # FIXME
+    # d.pcs.baidu.com will return 400 bad request with Host set
+    del request.headers['Host']
     content_length = int(upstream_headers['Content-Length'])
     range = request.headers.get('Range')
     if range is None:
