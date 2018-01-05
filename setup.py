@@ -1,13 +1,12 @@
 from setuptools import setup
 
-
 version = '0.0.1'
 
 setup(
     name='video_funnel',
     packages=['video_funnel'],
     version=version,
-    description='Use multiple connections to request the video, then feed combined data to the player.',
+    description='Use multiple connections to request the video, then feed the combined data to the player.',
     setup_requires=['setuptools-markdown'],
     long_description_markdown_filename='README.md',
     author='Chen Shuaimin',
