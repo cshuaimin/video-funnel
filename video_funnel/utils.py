@@ -1,10 +1,16 @@
 import asyncio
-import aiohttp
-import socket
-import re
+import builtins
 import functools
+import re
+import socket
+import sys
+from contextlib import contextmanager
 
+import aiohttp
+
+# FIXME
 max_tries = 10
+
 
 class HttpRange:
     """Class for iterating subrange.
@@ -105,3 +111,12 @@ def retry(coro_func):
                 await asyncio.sleep(1)
     return wrapper
 
+
+@contextmanager
+def hook_print(print):
+    save = builtins.print
+    builtins.print = print
+    try:
+        yield
+    finally:
+        builtins.print = save
