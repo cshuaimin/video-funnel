@@ -1,6 +1,6 @@
 from setuptools import setup
 
-version = '0.0.3'
+version = '0.1.3'
 
 setup(
     name='video_funnel',
@@ -13,7 +13,7 @@ setup(
     author_email='chen_shuaimin@outlook.com',
     url='https://github.com/cshuaimin/video-funnel',
     python_requires='>=3.6',
-    install_requires=['aiohttp', 'argparse'],
+    install_requires=['aiohttp', 'argparse', 'tqdm'],
 
     classifiers=[
         'Development Status :: 3 - Alpha',
