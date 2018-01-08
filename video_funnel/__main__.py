@@ -16,6 +16,7 @@ def convert_unit(s):
 def main():
     ap = ArgumentParser(description='Funnel -- Use multiple connections to request the video, then feed the combined data to the player.')
     ap.add_argument('url', metavar='URL', help='the video url')
+    ap.add_argument('--port', type=int, help='port to listen')
     ap.add_argument('--block-size', '-b', metavar='N', type=convert_unit, default='4M',
                     help='size of one block')
     ap.add_argument('--piece-size', '-p', metavar='N', type=convert_unit, default='1M',
@@ -33,7 +34,13 @@ def main():
     app['args'] = args
     app['session'] = None
     try:
-        web.run_app(app, loop=asyncio.get_event_loop())
+        print(f'* Listening at port {args.port or 8080} ...')
+        web.run_app(
+            app,
+            print=None,
+            port=args.port,
+            loop=asyncio.get_event_loop()
+        )
     except KeyboardInterrupt:
         pass
     finally:

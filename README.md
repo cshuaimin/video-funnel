@@ -1,6 +1,6 @@
 <p align="center"><img src="funnel.png" /></p>
 <h1 align="center">Video Funnel</h1>
-<p align="center"><a href="https://badge.fury.io/py/video_funnel"><img src="https://badge.fury.io/py/video_funnel.svg" alt="PyPI version" height="18"></a></p>
+<p align="center"><a href="https://badge.fury.io/py/video-funnel"><img src="https://badge.fury.io/py/video-funnel.svg" alt="PyPI version" height="18"></a></p>
 <p align="center">让你在线看视频也能达到多线程下载的速度</p>
 
 ***
@@ -17,14 +17,14 @@ $ sudo pip(3) install video_funnel
 2. 启动 `video_funnel` 的服务器：
 ```bash
 $ vf http://tulip.ink/test.mp4 &
-======== Running on http://0.0.0.0:8080 ========
-(Press CTRL+C to quit)
+* Listening at port 8080 ...
 ```
 
 3. 用 `mpv` 播放：
 ```bash
-$ mpv http://localhost:8080
+$ mpv --quiet http://localhost:8080
 ```
+`--quiet` 参数是为了避免 mpv 的状态栏与 video_funnel 的进度条混杂在一起。
 
 #### 动机：
 
