@@ -27,6 +27,8 @@ def main():
                     help='timeout in request')
     ap.add_argument('--max-tries', '-r', type=int, metavar='N', default=10,
                     help='Limit retries on network errors.')
+    ap.add_argument('--with-cookies', '-c', choices=['chrome', 'firefox'],
+                    help="Choose one browser to load cookies (usually combining two browsers' cookies does not work).")
     args = ap.parse_args()
 
     app = web.Application()

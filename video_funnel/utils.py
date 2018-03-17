@@ -3,10 +3,13 @@ import builtins
 import functools
 import re
 import socket
-import sys
+import urllib.parse
 from contextlib import contextmanager
+from typing import Dict
 
 import aiohttp
+import browsercookie
+from aiohttp.helpers import is_ip_address
 
 # FIXME
 max_tries = 10
@@ -120,3 +123,34 @@ def hook_print(print):
         yield
     finally:
         builtins.print = save
+
+
+# Copied from aiohttp/cookiejar.py :)
+def _is_domain_match(domain, hostname):
+    """Implements domain matching adhering to RFC 6265."""
+    # In aiohttp, this is done in previous steps.
+    if domain.startswith('.'):
+        domain = domain[1:]
+
+    if hostname == domain:
+        return True
+
+    if not hostname.endswith(domain):
+        return False
+
+    non_matching = hostname[:-len(domain)]
+
+    if not non_matching.endswith("."):
+        return False
+
+    return not is_ip_address(hostname)
+
+
+def load_browser_cookies(browser: str, url: str) -> Dict[str, str]:
+    with hook_print(lambda *_: None):
+        jar = getattr(browsercookie, browser)()
+    host = urllib.parse.urlsplit(url).netloc
+    return {
+        cookie.name: cookie.value
+        for cookie in jar if _is_domain_match(cookie.domain, host)
+    }

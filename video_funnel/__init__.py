@@ -4,7 +4,7 @@ import aiohttp
 from aiohttp import web
 from tqdm import tqdm
 
-from .utils import HttpRange, hook_print, retry
+from .utils import HttpRange, hook_print, load_browser_cookies, retry
 
 
 class Funnel:
@@ -76,16 +76,30 @@ class Funnel:
 
 
 async def handler(request):
+    args = request.app['args']
     if request.app['session'] is None:
         del request.headers['Host']
-        request.app['session'] = aiohttp.ClientSession(headers=request.headers)
+        if args.with_cookies:
+            cookies = load_browser_cookies(args.with_cookies, args.url)
+        else:
+            cookies = None
+        request.app['session'] = aiohttp.ClientSession(
+            headers=request.headers,
+            cookies=cookies
+        )
 
-    url = request.app['args'].url
+    url = args.url
     async with request.app['session'].head(url, allow_redirects=True) as resp:
+        headers = dict(resp.headers)
+        del headers['Content-Length']
         if resp.status >= 400 or request.method == 'HEAD':
-            return web.Response(status=resp.status, headers=resp.headers)
+            return web.Response(status=resp.status, headers=headers)
 
-    headers = dict(resp.headers)
+    # Prevent downloading if we open <localhost:8080> in the browser.
+    try:
+        del headers['Content-Disposition']
+    except KeyError:
+        pass
     content_length = int(headers['Content-Length'])
     range = headers.get('Range')
     if range is None:
@@ -96,7 +110,6 @@ async def handler(request):
         try:
             range = HttpRange.from_str(range, content_length)
         except ValueError:
-            del headers['Content-Length']
             headers['Content-Range'] = f'*/{content_length}'
             return web.Response(status=416, headers=headers)
         else:
@@ -105,7 +118,6 @@ async def handler(request):
                 f'bytes {range.begin}-{range.end}/{content_length}'
     resp = web.StreamResponse(status=status, headers=headers)
     await resp.prepare(request)
-    args = request.app['args']
     async with Funnel(request.app['session'], url, range,
                       block_size=args.block_size,
                       piece_size=args.piece_size,
