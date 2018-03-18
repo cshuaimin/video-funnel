@@ -1,6 +1,6 @@
 from setuptools import setup
 
-version = '0.2.5'
+version = '0.2.6'
 
 setup(
     name='video_funnel',

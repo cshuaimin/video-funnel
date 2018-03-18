@@ -35,25 +35,14 @@ def main():
     app.router.add_get('/', handler)
     app['args'] = args
     app['session'] = None
-    try:
-        print(f'* Listening at port {args.port or 8080} ...')
-        web.run_app(
-            app,
-            print=None,
-            port=args.port,
-            loop=asyncio.get_event_loop()
-        )
-    except KeyboardInterrupt:
-        pass
-    finally:
+    async def close_session(app):
         try:
-            app['session'].close()
+            await app['session'].close()
         except AttributeError:
             pass
-        loop = asyncio.get_event_loop()
-        loop.stop()
-        loop.run_forever()
-        loop.close()
+    app.on_cleanup.append(close_session)
+    print(f'* Listening at port {args.port or 8080} ...')
+    web.run_app(app, print=None, port=args.port)
 
 
 if __name__ == '__main__':
