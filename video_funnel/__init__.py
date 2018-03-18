@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import suppress
 
 import aiohttp
 from aiohttp import web
@@ -77,8 +78,12 @@ class Funnel:
 
 async def handler(request):
     args = request.app['args']
+    range = request.headers.get('Range')
+
     if request.app['session'] is None:
-        del request.headers['Host']
+        with suppress(KeyError):
+            del request.headers['Host']
+            del request.headers['Range']
         if args.with_cookies:
             cookies = load_browser_cookies(args.with_cookies, args.url)
         else:
@@ -91,17 +96,18 @@ async def handler(request):
     url = args.url
     async with request.app['session'].head(url, allow_redirects=True) as resp:
         headers = dict(resp.headers)
-        del headers['Content-Length']
         if resp.status >= 400 or request.method == 'HEAD':
+            del headers['Content-Length']
             return web.Response(status=resp.status, headers=headers)
 
     # Prevent downloading if we open <localhost:8080> in the browser.
-    try:
+    with suppress(KeyError):
         del headers['Content-Disposition']
-    except KeyError:
-        pass
     content_length = int(headers['Content-Length'])
-    range = headers.get('Range')
+    del headers['Content-Length']
+    # Note that there are two headers: 
+    #   1. request.headers is sent by the player
+    #   2. headers is the remote server replied to us.
     if range is None:
         # not a Range request - the whole file
         range = HttpRange(0, content_length - 1)
@@ -110,8 +116,10 @@ async def handler(request):
         try:
             range = HttpRange.from_str(range, content_length)
         except ValueError:
+            headers['Content-Type'] = 'text/html'
             headers['Content-Range'] = f'*/{content_length}'
-            return web.Response(status=416, headers=headers)
+            return web.Response(status=416, headers=headers,
+                text='<html>416 Requested Range Not Satisfiable</html>')
         else:
             status = 206
             headers['Content-Range'] = \
