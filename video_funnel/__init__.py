@@ -88,6 +88,7 @@ async def handler(request):
             cookies = load_browser_cookies(args.with_cookies, args.url)
         else:
             cookies = None
+        del request.headers['user-agent']
         request.app['session'] = aiohttp.ClientSession(
             headers=request.headers,
             cookies=cookies
@@ -105,7 +106,7 @@ async def handler(request):
         del headers['Content-Disposition']
     content_length = int(headers['Content-Length'])
     del headers['Content-Length']
-    # Note that there are two headers: 
+    # Note that there are two headers:
     #   1. request.headers is sent by the player
     #   2. headers is the remote server replied to us.
     if range is None:
@@ -118,8 +119,10 @@ async def handler(request):
         except ValueError:
             headers['Content-Type'] = 'text/html'
             headers['Content-Range'] = f'*/{content_length}'
-            return web.Response(status=416, headers=headers,
-                text='<html>416 Requested Range Not Satisfiable</html>')
+            return web.Response(
+                status=416, headers=headers,
+                text='<html>416 Requested Range Not Satisfiable</html>'
+            )
         else:
             status = 206
             headers['Content-Range'] = \
@@ -133,8 +136,7 @@ async def handler(request):
                       disable_bar=args.disable_bar) as funnel:
         try:
             async for chunk in funnel:
-                resp.write(chunk)
-                await resp.drain()
+                await resp.write(chunk)
             return resp
         except aiohttp.ClientError as exc:
             print(exc)
