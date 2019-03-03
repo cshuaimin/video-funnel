@@ -11,7 +11,7 @@ setup(
     author_email='chen_shuaimin@outlook.com',
     url='https://github.com/cshuaimin/video-funnel',
     python_requires='>=3.6',
-    install_requires=['aiohttp', 'argparse', 'tqdm'],
+    install_requires=['aiohttp', 'argparse', 'tqdm', 'browsercookie'],
 
     classifiers=[
         'Development Status :: 3 - Alpha',

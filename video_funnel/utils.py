@@ -5,14 +5,16 @@ import re
 import socket
 import urllib.parse
 from contextlib import contextmanager
-from typing import Dict
 
 import aiohttp
 import browsercookie
-from aiohttp.helpers import is_ip_address
+from aiohttp.cookiejar import CookieJar
 
-# FIXME
 max_tries = 10
+
+
+class Not206Error(Exception):
+    pass
 
 
 class HttpRange:
@@ -42,11 +44,16 @@ class HttpRange:
 
     @classmethod
     def from_str(cls, range_str, content_length=None):
-        begin, end = cls.pattern.match(range_str).groups()
+        match = cls.pattern.match(range_str)
+        if not match:
+            raise ValueError
+        begin, end = match.groups()
         begin = int(begin)
         end = int(end) if end else content_length - 1
         if begin > end:
             raise ValueError
+        if end >= content_length:
+            end = content_length - 1
         return cls(begin, end)
 
     def __repr__(self):
@@ -93,17 +100,12 @@ def retry(coro_func):
                     msg = str(exc) or exc.__class__.__name__
                 if tried <= max_tries:
                     sec = tried / 2
-                    print(
-                        '%s() failed: %s, retry in %.1f seconds (%d/%d)' %
-                        (coro_func.__name__, msg,
-                         sec, tried, max_tries)
-                    )
+                    print('%s() failed: %s, retry in %.1f seconds (%d/%d)' %
+                          (coro_func.__name__, msg, sec, tried, max_tries))
                     await asyncio.sleep(sec)
                 else:
-                    print(
-                        '%s() failed after %d tries: %s ' %
-                        (coro_func.__name__, max_tries, msg)
-                    )
+                    print('%s() failed after %d tries: %s ' %
+                          (coro_func.__name__, max_tries, msg))
                     raise
             except asyncio.TimeoutError:
                 # Usually server has a fixed TCP timeout to clean dead
@@ -112,6 +114,7 @@ def retry(coro_func):
                 # So retry it without checking the max retries.
                 print('%s() timeout, retry in 1 second' % coro_func.__name__)
                 await asyncio.sleep(1)
+
     return wrapper
 
 
@@ -125,28 +128,16 @@ def hook_print(print):
         builtins.print = save
 
 
-# Copied from aiohttp/cookiejar.py :)
 def _is_domain_match(domain, hostname):
-    """Implements domain matching adhering to RFC 6265."""
     # In aiohttp, this is done in previous steps.
     if domain.startswith('.'):
         domain = domain[1:]
-
-    if hostname == domain:
-        return True
-
-    if not hostname.endswith(domain):
-        return False
-
-    non_matching = hostname[:-len(domain)]
-
-    if not non_matching.endswith("."):
-        return False
-
-    return not is_ip_address(hostname)
+    return CookieJar._is_domain_match(domain, hostname)
 
 
-def load_browser_cookies(browser: str, url: str) -> Dict[str, str]:
+def load_browser_cookies(browser, url):
+    if browser is None:
+        return None
     with hook_print(lambda *_: None):
         jar = getattr(browsercookie, browser)()
     host = urllib.parse.urlsplit(url).netloc
