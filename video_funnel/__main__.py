@@ -46,7 +46,7 @@ def make_args():
     ap.add_argument(
         '--load-cookies',
         '-c',
-        choices=['chrome', 'firefox'],
+        choices=['chrome', 'chromium', 'firefox'],
         help='load browser cookies')
     ap.add_argument(
         '--original-url',

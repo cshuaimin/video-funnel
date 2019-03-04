@@ -8,18 +8,16 @@ from .utils import HttpRange, Not206Error
 
 
 async def handler(request):
-    base_headers = {
-        'Content-Length': request.app['content_length'],
-        'Content-Type': request.app['content_type']
-    }
     content_length = int(request.app['content_length'])
     range = request.headers.get('Range')
     if range is None:
         # not a Range request - the whole file
         range = HttpRange(0, content_length - 1)
         resp = web.StreamResponse(
-            status=200, headers={
-                **base_headers, 'Accept-Ranges': 'bytes'
+            status=200,
+            headers={
+                'Content-Length': f'{content_length}',
+                'Accept-Ranges': 'bytes'
             })
     else:
         try:
@@ -31,7 +29,7 @@ async def handler(request):
             resp = web.StreamResponse(
                 status=206,
                 headers={
-                    **base_headers, 'Content-Range':
+                    'Content-Range':
                     f'bytes {range.begin}-{range.end}/{content_length}'
                 })
 

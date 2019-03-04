@@ -3,12 +3,11 @@ import builtins
 import functools
 import re
 import socket
+import sys
 import urllib.parse
 from contextlib import contextmanager
 
 import aiohttp
-import browsercookie
-from aiohttp.cookiejar import CookieJar
 
 max_tries = 10
 
@@ -128,20 +127,29 @@ def hook_print(print):
         builtins.print = save
 
 
-def _is_domain_match(domain, hostname):
-    # In aiohttp, this is done in previous steps.
-    if domain.startswith('.'):
-        domain = domain[1:]
-    return CookieJar._is_domain_match(domain, hostname)
-
-
 def load_browser_cookies(browser, url):
     if browser is None:
         return None
-    with hook_print(lambda *_: None):
-        jar = getattr(browsercookie, browser)()
-    host = urllib.parse.urlsplit(url).netloc
-    return {
-        cookie.name: cookie.value
-        for cookie in jar if _is_domain_match(cookie.domain, host)
-    }
+
+    # browsercookie can't get Chrome's cookie on Linux
+    if sys.platform.startswith('linux') and (browser == 'chrome'
+                                             or browser == 'chromium'):
+        from pycookiecheat import chrome_cookies
+        return chrome_cookies(url, browser=browser)
+    else:
+        import browsercookie
+        from aiohttp.cookiejar import CookieJar
+
+        def _is_domain_match(domain, hostname):
+            # In aiohttp, this is done in previous steps.
+            if domain.startswith('.'):
+                domain = domain[1:]
+            return CookieJar._is_domain_match(domain, hostname)
+
+        with hook_print(lambda *_: None):
+            jar = getattr(browsercookie, browser)()
+        host = urllib.parse.urlsplit(url).netloc
+        return {
+            cookie.name: cookie.value
+            for cookie in jar if _is_domain_match(cookie.domain, host)
+        }
