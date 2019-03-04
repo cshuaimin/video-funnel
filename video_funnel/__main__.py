@@ -1,12 +1,8 @@
 import asyncio
 import re
 from argparse import ArgumentParser
-from sys import stderr
 
-from aiohttp import ClientSession, web
-
-from .handler import handler
-from .utils import load_browser_cookies
+from .server import serve
 
 
 def convert_unit(s):
@@ -58,45 +54,7 @@ def make_args():
     return ap.parse_args()
 
 
-async def main():
-    args = make_args()
-    app = web.Application()
-    app.router.add_get('/', handler)
-    app['args'] = args
-
-    app['session'] = session = ClientSession(
-        raise_for_status=True,
-        cookies=load_browser_cookies(args.load_cookies, args.url))
-
-    async with session.head(args.url, allow_redirects=True) as resp:
-        if resp.headers.get('Accept-Ranges') != 'bytes':
-            print(
-                'Range requests are not supported by the server.',
-                file=stderr,
-            )
-            return
-        if not args.original_url:
-            args.url = resp.url
-
-        app['content_length'] = resp.headers['Content-Length']
-        app['content_type'] = resp.headers['Content-Type']
-
-    async def close_session(app):
-        await session.close()
-
-    app.on_cleanup.append(close_session)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '127.0.0.1', args.port)
-    await site.start()
-    print(f'* Listening at port {args.port} ...')
-    try:
-        await asyncio.sleep(float('inf'))
-    finally:
-        await runner.cleanup()
-
-
 try:
-    asyncio.run(main())
+    asyncio.run(serve(make_args()))
 except KeyboardInterrupt:
     pass
