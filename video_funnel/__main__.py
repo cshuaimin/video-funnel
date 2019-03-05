@@ -1,15 +1,9 @@
-import re
 from argparse import ArgumentParser
 
 from aiohttp import web
 
 from .server import make_app
-
-
-def convert_unit(s):
-    num, unit = re.match(r'(\d+)([BKMG]?)', s, re.I).groups()
-    units = {'B': 1, 'K': 1024, 'M': 1024 * 1024, 'G': 1024 * 1024 * 1024}
-    return int(num) * units.get(unit.upper(), 1)
+from .utils import convert_unit
 
 
 def make_args():
@@ -18,7 +12,7 @@ def make_args():
         'video, then feed the combined data to the player.')
 
     ap.add_argument('url', metavar='URL', help='the video url')
-    ap.add_argument('--port', type=int, default=2345, help='port to listen')
+    ap.add_argument('--port', type=int, default=8080, help='port to listen')
     ap.add_argument(
         '--block-size',
         '-b',
@@ -34,12 +28,12 @@ def make_args():
         default='1M',
         help='size of one piece')
     ap.add_argument(
-        '--cookies',
+        '--cookies-from',
         '-c',
         choices=['chrome', 'chromium', 'firefox'],
         help='load browser cookies')
     ap.add_argument(
-        '--original-url',
+        '--use-original-url',
         '-g',
         action='store_true',
         help='always use the original URL '

@@ -4,7 +4,7 @@ from io import BytesIO
 import aiohttp
 from tqdm import tqdm
 
-from .utils import Not206Error, hook_print, retry
+from .utils import RangeNotSupportedError, hook_print, retry
 
 
 class Funnel:
@@ -36,11 +36,10 @@ class Funnel:
 
     @retry
     async def request_range(self, range, bar):
-        headers = {'Range': 'bytes={}-{}'.format(*range)}
+        headers = {'Range': 'bytes={0.begin}-{0.end}'.format(range)}
         async with self.session.get(self.url, headers=headers) as resp:
             if resp.status != 206:
-                raise Not206Error(f'Server returned {resp.status} for '
-                                  'a range request (should be 206).')
+                raise RangeNotSupportedError
             data = BytesIO()
             async for chunk in resp.content.iter_any():
                 bar.update(len(chunk))
@@ -48,7 +47,7 @@ class Funnel:
             return data.getvalue()
 
     async def produce_blocks(self):
-        for nr, block in enumerate(self.range.iter_subrange(self.block_size)):
+        for nr, block in enumerate(self.range.subranges(self.block_size)):
             with tqdm(
                     desc=f'Block #{nr}',
                     leave=False,
@@ -59,13 +58,12 @@ class Funnel:
                     unit_divisor=1024) as bar, hook_print(bar.write):
                 futures = [
                     asyncio.ensure_future(self.request_range(r, bar))
-                    for r in block.iter_subrange(self.piece_size)
+                    for r in block.subranges(self.piece_size)
                 ]
                 try:
                     results = await asyncio.gather(*futures)
                     await self.blocks.put(b''.join(results))
-                except (asyncio.CancelledError, aiohttp.ClientError,
-                        Not206Error) as exc:
+                except (asyncio.CancelledError, aiohttp.ClientError) as exc:
                     for f in futures:
                         f.cancel()
                     #  Notify the consumer to leave

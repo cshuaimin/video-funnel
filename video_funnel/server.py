@@ -1,25 +1,41 @@
 import asyncio
-import sys
 
 import aiohttp
 from aiohttp import web
 
 from .funnel import Funnel
-from .utils import HttpRange, Not206Error, load_browser_cookies
+from .utils import (
+    HttpRange,
+    RangeNotSupportedError,
+    load_browser_cookies,
+    retry,
+)
 
 
-async def make_response(request, url, block_size, piece_size, original_url):
+async def make_response(request, url, block_size, piece_size, cookies_from,
+                        use_original_url):
     session = request.app['session']
-    async with session.head(url, allow_redirects=True) as resp:
-        if resp.headers.get('Accept-Ranges') != 'bytes':
-            print(
-                'Range requests are not supported by the server.',
-                file=sys.stderr,
-            )
-            return
-        if not original_url:
-            url = resp.url
-        content_length = int(resp.headers['Content-Length'])
+    session.cookie_jar.update_cookies(load_browser_cookies(cookies_from, url))
+
+    @retry
+    async def get_content_length():
+        nonlocal url
+        async with session.head(url, allow_redirects=True) as resp:
+            if resp.headers.get('Accept-Ranges') != 'bytes':
+                raise RangeNotSupportedError
+            if not use_original_url:
+                url = resp.url
+            return int(resp.headers['Content-Length'])
+
+    try:
+        content_length = await get_content_length()
+    except RangeNotSupportedError as exc:
+        msg = str(exc)
+        print(msg)
+        return web.Response(status=501, text=msg)
+    except aiohttp.ClientError as exc:
+        print(exc)
+        return web.Response(status=exc.status)
 
     range = request.headers.get('Range')
     if range is None:
@@ -49,23 +65,21 @@ async def make_response(request, url, block_size, piece_size, original_url):
         return resp
 
     await resp.prepare(request)
-    args = request.app['args']
     async with Funnel(
             url,
             range,
             session,
-            args.block_size,
-            args.piece_size,
+            block_size,
+            piece_size,
     ) as funnel:
         try:
             async for chunk in funnel:
                 await resp.write(chunk)
             return resp
-        except (aiohttp.ClientError, Not206Error) as exc:
+        except (aiohttp.ClientError, RangeNotSupportedError) as exc:
             print(exc)
-            return web.Response(status=exc.code)
+            return web.Response(status=exc.status)
         except asyncio.CancelledError:
-            print('Cancelled')
             raise
 
 
@@ -82,7 +96,8 @@ async def cli(request):
         url,
         args.block_size,
         args.piece_size,
-        args.original_url,
+        args.cookies_from,
+        args.use_original_url,
     )
 
 
@@ -95,7 +110,8 @@ async def api(request):
         query.get('url', args.url),
         query.get('block_size', args.block_size),
         query.get('piece_size', args.piece_size),
-        query.get('original_url', args.original_url),
+        query.get('cookies_from', args.cookies_from),
+        query.get('use_original_url', args.use_original_url),
     )
 
 
@@ -105,9 +121,7 @@ async def make_app(args):
     app['args'] = args
 
     async def session(app):
-        app['session'] = aiohttp.ClientSession(
-            raise_for_status=True,
-            cookies=load_browser_cookies(args.cookies, args.url))
+        app['session'] = aiohttp.ClientSession(raise_for_status=True)
         yield
         await app['session'].close()
 
