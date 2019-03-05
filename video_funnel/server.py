@@ -51,7 +51,7 @@ async def make_response(request, url, block_size, piece_size, original_url):
     await resp.prepare(request)
     args = request.app['args']
     async with Funnel(
-            args.url,
+            url,
             range,
             session,
             args.block_size,
@@ -99,22 +99,18 @@ async def api(request):
     )
 
 
-async def serve(args):
+async def make_app(args):
     app = web.Application()
     app.add_routes(routes)
     app['args'] = args
 
-    app['session'] = aiohttp.ClientSession(
-        raise_for_status=True,
-        cookies=load_browser_cookies(args.load_cookies, args.url))
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '127.0.0.1', args.port)
-    await site.start()
-    print(f'* Listening at port {args.port} ...')
-    try:
-        await asyncio.sleep(float('inf'))
-    finally:
-        await runner.cleanup()
+    async def session(app):
+        app['session'] = aiohttp.ClientSession(
+            raise_for_status=True,
+            cookies=load_browser_cookies(args.cookies, args.url))
+        yield
         await app['session'].close()
+
+    app.cleanup_ctx.append(session)
+
+    return app
