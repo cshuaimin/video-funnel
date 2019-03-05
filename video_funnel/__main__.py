@@ -1,14 +1,15 @@
-import asyncio
 import re
 from argparse import ArgumentParser
 
-from .server import serve
+from aiohttp import web
+
+from .server import make_app
 
 
 def convert_unit(s):
     num, unit = re.match(r'(\d+)([BKMG]?)', s, re.I).groups()
     units = {'B': 1, 'K': 1024, 'M': 1024 * 1024, 'G': 1024 * 1024 * 1024}
-    return int(num) * units[unit.upper() or 'B']
+    return int(num) * units.get(unit.upper(), 1)
 
 
 def make_args():
@@ -33,14 +34,7 @@ def make_args():
         default='1M',
         help='size of one piece')
     ap.add_argument(
-        '--max-tries',
-        '-r',
-        type=int,
-        metavar='N',
-        default=10,
-        help='Limit retries on network errors.')
-    ap.add_argument(
-        '--load-cookies',
+        '--cookies',
         '-c',
         choices=['chrome', 'chromium', 'firefox'],
         help='load browser cookies')
@@ -54,7 +48,11 @@ def make_args():
     return ap.parse_args()
 
 
-try:
-    asyncio.run(serve(make_args()))
-except KeyboardInterrupt:
-    pass
+def main():
+    args = make_args()
+    print(f'* Listening at port {args.port} ...')
+    web.run_app(make_app(args), print=None, port=args.port)
+
+
+if __name__ == '__main__':
+    main()
