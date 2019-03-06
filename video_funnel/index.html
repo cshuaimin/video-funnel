@@ -14,7 +14,7 @@ function play()
 var url = $$("#url").val();if (url =="" ||url ==null) {mdui.snackbar({message:'未输入URL！'});return;}
 var blocksize = $$("#blocksize").val();if (blocksize =="" ||blocksize ==null) {mdui.snackbar({message:'未输入Block Size！'});return;}
 var piecesize = $$("#piecesize").val();if (piecesize =="" ||piecesize ==null) {mdui.snackbar({message:'未输入Piece Size！'});return;}
-location.href = "api?url=" + url + "&block_size=" + blocksize + "&piece_size=" + piecesize;
+location.href = "api?url=" + encodeURIComponent(url) + "&block_size=" + blocksize + "&piece_size=" + piecesize;
 };
 </script>
 <!--
