@@ -10,7 +10,12 @@ def make_args():
         description='Video Funnel -- Use multiple connections to request the '
         'video, then feed the combined data to the player.')
 
-    ap.add_argument('url', metavar='URL', help='the video url')
+    ap.add_argument(
+        '--url',
+        '-u',
+        help='the video url, omitting it to run VF in WebUI mode '
+        '(in this mode, http://127.0.0.1:8080 returns the WebUI '
+        'instead of the video stream)')
     ap.add_argument('--port', type=int, default=8080, help='port to listen')
     ap.add_argument(
         '--block-size',

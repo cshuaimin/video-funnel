@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 
 import aiohttp
 from aiohttp import web
@@ -7,16 +8,18 @@ from .funnel import Funnel
 from .utils import (
     HttpRange,
     RangeNotSupportedError,
+    convert_unit,
     load_browser_cookies,
     retry,
-    convert_unit,
 )
 
 
 async def make_response(request, url, block_size, piece_size, cookies_from,
                         use_original_url):
     session = request.app['session']
-    session.cookie_jar.update_cookies(load_browser_cookies(cookies_from, url))
+    if cookies_from:
+        session.cookie_jar.update_cookies(
+            load_browser_cookies(cookies_from, url))
 
     @retry
     async def get_content_length():
@@ -84,11 +87,13 @@ async def make_response(request, url, block_size, piece_size, cookies_from,
             raise
 
 
-routes = web.RouteTableDef()
+ROOT = Path(__file__).parent
 
 
-@routes.get('/')
-@routes.get('/{_:https?://.+}')
+async def index(request):
+    return web.FileResponse(ROOT / 'index.html')
+
+
 async def cli(request):
     args = request.app['args']
     url = request.raw_path[1:] or args.url
@@ -102,7 +107,6 @@ async def cli(request):
     )
 
 
-@routes.get('/api')
 async def api(request):
     args = request.app['args']
     query = request.query
@@ -120,8 +124,15 @@ async def api(request):
 
 async def make_app(args):
     app = web.Application()
-    app.add_routes(routes)
     app['args'] = args
+    if args.url is None:
+        app.router.add_get('/', index)
+        #  app.router.add_static('/static', ROOT / 'static')
+        app.router.add_get('/api', api)
+        app.router.add_get('/{_:https?://.+}', cli)
+    else:
+        app.router.add_get('/', cli)
+        app.router.add_get('/{_:https?://.+}', cli)
 
     async def session(app):
         app['session'] = aiohttp.ClientSession(raise_for_status=True)
