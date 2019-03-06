@@ -12,7 +12,7 @@ setup(
     url='https://github.com/cshuaimin/video-funnel',
     python_requires='>=3.6',
     install_requires=['aiohttp == 3.5.4', 'argparse', 'tqdm', 'browsercookie', 'pycookiecheat'],
-    package_data={'video_funnel': 'index.html'},
+    package_data={'video_funnel': ['index.html']},
 
     classifiers=[
         'Development Status :: 3 - Alpha',
