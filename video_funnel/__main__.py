@@ -3,7 +3,6 @@ from argparse import ArgumentParser
 from aiohttp import web
 
 from .server import make_app
-from .utils import convert_unit
 
 
 def make_args():
@@ -17,14 +16,12 @@ def make_args():
         '--block-size',
         '-b',
         metavar='N',
-        type=convert_unit,
         default='4M',
         help='size of one block')
     ap.add_argument(
         '--piece-size',
         '-p',
         metavar='N',
-        type=convert_unit,
         default='1M',
         help='size of one piece')
     ap.add_argument(

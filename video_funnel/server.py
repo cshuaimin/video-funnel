@@ -9,6 +9,7 @@ from .utils import (
     RangeNotSupportedError,
     load_browser_cookies,
     retry,
+    convert_unit,
 )
 
 
@@ -105,11 +106,13 @@ async def cli(request):
 async def api(request):
     args = request.app['args']
     query = request.query
+    block_size = convert_unit(query.get('block_size', args.block_size))
+    piece_size = convert_unit(query.get('piece_size', args.piece_size))
     return await make_response(
         request,
         query.get('url', args.url),
-        query.get('block_size', args.block_size),
-        query.get('piece_size', args.piece_size),
+        block_size,
+        piece_size,
         query.get('cookies_from', args.cookies_from),
         query.get('use_original_url', args.use_original_url),
     )
