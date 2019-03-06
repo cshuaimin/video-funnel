@@ -95,8 +95,8 @@ async def cli(request):
     return await make_response(
         request,
         url,
-        args.block_size,
-        args.piece_size,
+        convert_unit(args.block_size),
+        convert_unit(args.piece_size),
         args.cookies_from,
         args.use_original_url,
     )
