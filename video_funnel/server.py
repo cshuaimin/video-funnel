@@ -22,17 +22,17 @@ async def make_response(request, url, block_size, piece_size, cookies_from,
             load_browser_cookies(cookies_from, url))
 
     @retry
-    async def get_content_length():
+    async def get_info():
         nonlocal url
         async with session.head(url, allow_redirects=True) as resp:
             if resp.headers.get('Accept-Ranges') != 'bytes':
                 raise RangeNotSupportedError
             if not use_original_url:
                 url = resp.url
-            return int(resp.headers['Content-Length'])
+            return resp.content_length, resp.content_type
 
     try:
-        content_length = await get_content_length()
+        content_length, content_type = await get_info()
     except RangeNotSupportedError as exc:
         msg = str(exc)
         print(msg)
@@ -48,7 +48,8 @@ async def make_response(request, url, block_size, piece_size, cookies_from,
         resp = web.StreamResponse(
             status=200,
             headers={
-                'Content-Length': f'{content_length}',
+                'Content-Length': str(content_length),
+                'Content-Type': content_type,
                 'Accept-Ranges': 'bytes'
             })
     else:
@@ -61,6 +62,8 @@ async def make_response(request, url, block_size, piece_size, cookies_from,
             resp = web.StreamResponse(
                 status=206,
                 headers={
+                    'Content-Type':
+                    content_type,
                     'Content-Range':
                     f'bytes {range.begin}-{range.end}/{content_length}'
                 })
