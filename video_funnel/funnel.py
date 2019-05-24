@@ -40,11 +40,11 @@ class Funnel:
         async with self.session.get(self.url, headers=headers) as resp:
             if resp.status != 206:
                 raise RangeNotSupportedError
-            data = BytesIO()
             async for chunk in resp.content.iter_any():
+                self.buffer.seek(range.begin)
+                self.buffer.write(chunk)
                 bar.update(len(chunk))
-                data.write(chunk)
-            return data.getvalue()
+                range.begin += len(chunk)
 
     async def produce_blocks(self):
         for nr, block in enumerate(self.range.subranges(self.block_size)):
@@ -56,13 +56,15 @@ class Funnel:
                     unit='B',
                     unit_scale=True,
                     unit_divisor=1024) as bar, hook_print(bar.write):
+
+                self.buffer = BytesIO()
                 futures = [
                     asyncio.ensure_future(self.request_range(r, bar))
                     for r in block.subranges(self.piece_size)
                 ]
                 try:
-                    results = await asyncio.gather(*futures)
-                    await self.blocks.put(b''.join(results))
+                    await asyncio.gather(*futures)
+                    await self.blocks.put(self.buffer.getvalue())
                 except (asyncio.CancelledError, aiohttp.ClientError) as exc:
                     for f in futures:
                         f.cancel()
