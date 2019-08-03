@@ -35,13 +35,18 @@ class Funnel:
             yield chunk
 
     @retry
-    async def request_range(self, range, bar):
+    async def request_piece(self, range, block_begin, bar):
         headers = {'Range': 'bytes={0.begin}-{0.end}'.format(range)}
         async with self.session.get(self.url, headers=headers) as resp:
             if resp.status != 206:
                 raise RangeNotSupportedError
             async for chunk in resp.content.iter_any():
-                self.buffer.seek(range.begin)
+                # Here multiple request_piece() coroutines collaborate on
+                # this buffer to generate the *block*, so we need to seek to
+                # the correct position before writing.
+                # The range parameter is the offset in the *entire file*,
+                # so we need to convert it to an offset relative to the block.
+                self.buffer.seek(range.begin - block_begin)
                 self.buffer.write(chunk)
                 bar.update(len(chunk))
                 range.begin += len(chunk)
@@ -59,7 +64,8 @@ class Funnel:
 
                 self.buffer = BytesIO()
                 futures = [
-                    asyncio.ensure_future(self.request_range(r, bar))
+                    asyncio.ensure_future(
+                        self.request_piece(r, block.begin, bar))
                     for r in block.subranges(self.piece_size)
                 ]
                 try:
