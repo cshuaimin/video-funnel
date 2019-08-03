@@ -35,16 +35,21 @@ class Funnel:
             yield chunk
 
     @retry
-    async def request_range(self, range, bar):
+    async def request_piece(self, range, block_begin, bar):
         headers = {'Range': 'bytes={0.begin}-{0.end}'.format(range)}
         async with self.session.get(self.url, headers=headers) as resp:
             if resp.status != 206:
                 raise RangeNotSupportedError
-            data = BytesIO()
             async for chunk in resp.content.iter_any():
+                # Here multiple request_piece() coroutines collaborate on
+                # this buffer to generate the *block*, so we need to seek to
+                # the correct position before writing.
+                # The range parameter is the offset in the *entire file*,
+                # so we need to convert it to an offset relative to the block.
+                self.buffer.seek(range.begin - block_begin)
+                self.buffer.write(chunk)
                 bar.update(len(chunk))
-                data.write(chunk)
-            return data.getvalue()
+                range.begin += len(chunk)
 
     async def produce_blocks(self):
         for nr, block in enumerate(self.range.subranges(self.block_size)):
@@ -56,13 +61,16 @@ class Funnel:
                     unit='B',
                     unit_scale=True,
                     unit_divisor=1024) as bar, hook_print(bar.write):
+
+                self.buffer = BytesIO()
                 futures = [
-                    asyncio.ensure_future(self.request_range(r, bar))
+                    asyncio.ensure_future(
+                        self.request_piece(r, block.begin, bar))
                     for r in block.subranges(self.piece_size)
                 ]
                 try:
-                    results = await asyncio.gather(*futures)
-                    await self.blocks.put(b''.join(results))
+                    await asyncio.gather(*futures)
+                    await self.blocks.put(self.buffer.getvalue())
                 except (asyncio.CancelledError, aiohttp.ClientError) as exc:
                     for f in futures:
                         f.cancel()
