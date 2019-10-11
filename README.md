@@ -3,9 +3,6 @@
 <p align="center"><a href="https://badge.fury.io/py/video-funnel"><img src="https://badge.fury.io/py/video-funnel.svg" alt="PyPI version" height="18"></a></p> 
 <p align="center">让你在线看视频也能达到多线程下载的速度</p>
 
-***
-> 最近 EX-百度网盘获取的直链限速非常严重，[百度网盘高速下载助手](https://greasyfork.org/en/scripts/38661-%E7%99%BE%E5%BA%A6%E7%BD%91%E7%9B%98%E9%AB%98%E9%80%9F%E4%B8%8B%E8%BD%BD%E5%8A%A9%E6%89%8B)获取的形如 `http://pcs.baidu.com/rest/2.0/pcs/file?method=download..` 的链接没问题（需要加 cookie ，`--with-cookies`）。
-
 #### 马上使用：
 
 1. 从 [PyPI](https://pypi.python.org/pypi/video_funnel) 安装：
@@ -17,15 +14,18 @@ $ sudo pip(3) install video_funnel
 
 2. 启动 `video_funnel` 的服务器：
 ```console
-$ vf http://tulip.ink/test.mp4 &
+$ vf -u http://pcs.baidu.com/... &
 * Listening at port 8080 ...
 ```
+百度网盘的直链有很多油猴脚本可以获取，比如[这个](https://github.com/syhyz1990/baiduyun)，注意加上 Cookie 参数。
 
 3. 用 `vlc` 播放：
 ```bash
 $ vlc http://localhost:8080
 ```
 `mpv` 播放时会出现 `Seek failed` 的错误，原因未知（如果有路过的大神遇见过类似情况，请一定给我解释下～） #2
+
+另外 @Zxilly 贡献了个 Web UI，启动 vf 时不加 `-u` 参数即可使用。
 
 #### 动机：
 
